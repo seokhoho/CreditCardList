@@ -193,6 +193,9 @@
             <point key="canvasLocation" x="-641" y="-25"/>
         </scene>
     </scenes>
+    <designables>
+        <designable name="xCe-Zd-mwi"/>
+    </designables>
     <resources>
         <systemColor name="systemBackgroundColor">
             <color white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
