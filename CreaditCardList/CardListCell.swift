@@ -2,7 +2,6 @@
 //  CardListCell.swift
 //  CreditCardList
 //
-//  Created by 정유진 on 2022/09/16.
 //
 
 import UIKit
