@@ -7,13 +7,13 @@
 import UIKit
 import Kingfisher
 import FirebaseDatabase
+import FirebaseFirestore
 
 class CardListViewController: UITableViewController {
-    var ref: DatabaseReference! //Firebase Realtime Database를 가져올 수 있는 reference
+//    var ref: DatabaseReference! //Firebase Realtime Database를 가져올 수 있는 reference
+    var db = Firestore.firestore()
     
     var creditCardList: [CreditCard] = []
-    
-    
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -22,34 +22,62 @@ class CardListViewController: UITableViewController {
         let nibName = UINib(nibName: "CardListCell", bundle: nil)
         tableView.register(nibName, forCellReuseIdentifier: "CardListCell")
 
-        ref = Database.database().reference()
+        //Firestore database를 사용하기 위해 realtime database를 주석처리
+//        ref = Database.database().reference()
+//
+//        ref.observe(.value) { snapshot in
+//        //ref가 .value값을 observe (바라보게)
+//        //바라본 다음에는 snapshot이 발생
+//            guard let value = snapshot.value as? [String: [String: Any]] else { return }
+//            //value는 snapshot의 .value이다. 어떤 형태일 것이냐 - (각자가 만든 데이터 형식에 따라 다르다)
+//
+//            //json 디코딩
+//            do {
+//                let jsonData = try JSONSerialization.data(withJSONObject: value)
+//                //jsondata는 무슨값일까. JSONSerialization을 통해 json을 받는다
+//                //snapshot을 통해 가져온 value가 될 것이다
+//                let cardData = try JSONDecoder().decode([String: CreditCard].self, from: jsonData)
+//                //어떤 형태일 것이냐. JSONDecoder로 만들어준다. 우리가 만들것은 [String: CreditCard]형태
+//                let cardList = Array(cardData.values)
+//                //cardList는 array가 될 것이고 Dictionary값이므로 value값만 가져온다
+//
+//                //가져온 카드리스트를 미리 만들어 놓은 creditCardList에 넣기
+//                self.creditCardList = cardList.sorted { $0.rank < $1.rank }
+//                //카드의 랭크 기준으로 카드를 정렬을 해준다
+//
+//                //tableView를 reload해야한다, tableview는 UI의 움직임이고 UI는 메인쓰레드에서 제공되기 때문에 이 클로저 안에서도 메인에서 보도록 지정해야한다 -> 메인쓰레드에 해당 액션을 넣는것
+//                DispatchQueue.main.async {
+//                    self.tableView.reloadData()
+//                }
+//            } catch let error {
+//                print("ERROR JSON parsing \(error.localizedDescription)")
+//            }
+//        }
         
-        ref.observe(.value) { snapshot in
-        //ref가 .value값을 observe (바라보게)
-        //바라본 다음에는 snapshot이 발생
-            guard let value = snapshot.value as? [String: [String: Any]] else { return }
-            //value는 snapshot의 .value이다. 어떤 형태일 것이냐 - (각자가 만든 데이터 형식에 따라 다르다)
+        //Firestore 읽기
+        db.collection("creaditCardList").addSnapshotListener { snapshot, error in
+            guard let documents = snapshot?.documents else {
+            //snapshot을 통해 documents가 있을 때만 통과
+                print("ERROR Firestore fetching document \(String(describing: error))")
+                return
+            }
             
-            //json 디코딩
-            do {
-                let jsonData = try JSONSerialization.data(withJSONObject: value)
-                //jsondata는 무슨값일까. JSONSerialization을 통해 json을 받는다
-                //snapshot을 통해 가져온 value가 될 것이다
-                let cardData = try JSONDecoder().decode([String: CreditCard].self, from: jsonData)
-                //어떤 형태일 것이냐. JSONDecoder로 만들어준다. 우리가 만들것은 [String: CreditCard]형태
-                let cardList = Array(cardData.values)
-                //cardList는 array가 될 것이고 Dictionary값이므로 value값만 가져온다
-                
-                //가져온 카드리스트를 미리 만들어 놓은 creditCardList에 넣기
-                self.creditCardList = cardList.sorted { $0.rank < $1.rank }
-                //카드의 랭크 기준으로 카드를 정렬을 해준다
-                
-                //tableView를 reload해야한다, tableview는 UI의 움직임이고 UI는 메인쓰레드에서 제공되기 때문에 이 클로저 안에서도 메인에서 보도록 지정해야한다 -> 메인쓰레드에 해당 액션을 넣는것
-                DispatchQueue.main.async {
-                    self.tableView.reloadData()
+            self.creditCardList = documents.compactMap { doc -> CreditCard? in
+            //documents를 바라본다. compactMap은 nil값을 반환했을 경우 nil값을 배열안에 넣지 않기 위함
+            //like optional처리
+                do {
+                    let jsonData = try JSONSerialization.data(withJSONObject: doc.data(), options: [])
+                    let creditCard = try JSONDecoder().decode(CreditCard.self, from: jsonData)
+                    return creditCard
+                } catch let error {
+                    print("ERROR JSON Parsing \(error)")
+                    return nil
                 }
-            } catch let error {
-                print("ERROR JSON parsing \(error.localizedDescription)")
+            }.sorted { $0.rank < $1.rank }
+            //해당 배열을 1 ~ 10 랭크순 정렬
+            
+            DispatchQueue.main.async {
+                self.tableView.reloadData()
             }
         }
     }
@@ -86,8 +114,8 @@ class CardListViewController: UITableViewController {
         self.show(detailViewController, sender: nil)
         
         //Option1 경로를 알 때
-        let cardID = creditCardList[indexPath.row].id
-        ref.child("Item\(cardID)/isSelected").setValue(true)
+//        let cardID = creditCardList[indexPath.row].id
+//        ref.child("Item\(cardID)/isSelected").setValue(true)
         //path라는 것은 어떤 경로, 즉 카드아이디
         
         //Option2 경로를 모를 때
@@ -111,8 +139,8 @@ class CardListViewController: UITableViewController {
     override func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
         if editingStyle == .delete {
 //            //Option1 경로를 알 때
-            let cardID = creditCardList[indexPath.row].id
-            ref.child("item\(cardID)").removeValue()
+//            let cardID = creditCardList[indexPath.row].id
+//            ref.child("item\(cardID)").removeValue()
             //"item\(cardID)" 경로에 있는 데이터 전체가 삭제된다
 
 //            //Option2 경로를 모를 때
