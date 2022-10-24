@@ -113,6 +113,7 @@ class CardListViewController: UITableViewController {
         detailViewController.promotionDetail = creditCardList[indexPath.row].promotionDetail
         self.show(detailViewController, sender: nil)
         
+        //실시간 데이터베이스 쓰기
         //Option1 경로를 알 때
 //        let cardID = creditCardList[indexPath.row].id
 //        ref.child("Item\(cardID)/isSelected").setValue(true)
@@ -130,14 +131,32 @@ class CardListViewController: UITableViewController {
 //            self.ref.child("\(key)/isSelected").setValue(true)
 //            //가져온 키에 해당하는 것을 isSelected를 true로 설정
 //        }
-    }
+        
+        //Firestore 쓰기
+        //경로를 알고 있을 때. Firestore의 경로는 각 콜렉션과 문서의 아이디로 구성
+        let cardID = creditCardList[indexPath.row].id
+//        db.collection("creditCardList").document("card\(cardID)").updateData(["isSelected": true])
+        
+        //경로를 모를 때
+        db.collection("creaditCardList").whereField("id", isEqualTo: cardID).getDocuments { snapshot, _ in
+            guard let document = snapshot?.documents.first else {
+                print("ERROR Firestore fetching document")
+                return
+            }
+            
+            document.reference.updateData(["isSelected": true])
+        }
+                                                   
+                                                   }
     
     override func tableView(_ tableView: UITableView, canEditRowAt indexPath: IndexPath) -> Bool {
         return true
+        
     }
     
     override func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
         if editingStyle == .delete {
+//            실시간 데이터 베이스의 삭제
 //            //Option1 경로를 알 때
 //            let cardID = creditCardList[indexPath.row].id
 //            ref.child("item\(cardID)").removeValue()
@@ -152,6 +171,21 @@ class CardListViewController: UITableViewController {
 //                //snapshot의 value는 array값으로 전달이 됨
 //                self.ref.child(key).removeValue()
 //            }
+            
+            //firestore의 삭제
+            //경로를 알 때
+            let cardID = creditCardList[indexPath.row].id
+            db.collection("creaditCardList").document("card\(cardID)").delete()
+            
+            //경로를 모를 때
+            
+            db.collection("creaditCardList").whereField("id", isEqualTo: cardID).getDocuments { snapshot, _ in
+                guard let document = snapshot?.documents.first else {
+                    print("ERROR")
+                    return
+                }
+                document.reference.delete()
+            }
         }
     }
 }
